@@ -17,3 +17,5 @@ body, html {
     padding-top: 15px;
     user-select: none;
     cursor: pointer; }
+    .grid .cell.selected {
+      border-color: #f00; }
