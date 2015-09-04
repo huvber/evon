@@ -41,7 +41,7 @@ Grid.prototype.selectCell= function(cell,i,k){
   this.selectedCells.push({x:i, y:k, c: cell});
   this.selectedSum += cell.n;
 };
-Grid.prototype.trySelectCell = function(cell,i,k){
+Grid.prototype.trySelectCell = function(cell,i,k,handler){
   if(this.selectedCells.length === 0){
     this.selectCell(cell,i,k);
   } else {
@@ -58,24 +58,52 @@ Grid.prototype.trySelectCell = function(cell,i,k){
       if(cell.n + this.selectedSum <= 9) {
         this.selectCell(cell,i,k);
         if(this.selectedSum === 9){
-          this.removeSelectedCells();
+          this.removeSelectedCells(handler);
           return true;
         }
       }
     }
   }
 };
-Grid.prototype.removeSelectedCells = function(){
-  for(var i in this.selectedCell){
-    var c = this.selectedCell[i];
+Grid.prototype.removeSelectedCells = function(handler){
+  console.log('removing');
+  for(var i in this.selectedCells){
+    var c = this.selectedCells[i];
+    this.grid[c.x][c.y].selected = false;
     this.grid[c.x][c.y].n = 0;
   }
+  this.selectedCells = [];
+  this.selectedSum = 0;
+  this.shiftsCells(handler);
+};
+Grid.prototype.shiftsCells = function(handler){
+  console.log('shifting');
+  for(var i = 0; i < this.size; i++){
+    console.log({i:i, ind: this.findEmpty(this.grid[i]), grid: this.grid[i]});
+    while(this.findEmpty(this.grid[i]) > 0){
+      k=0;
+      for(var k = this.findEmpty(this.grid[i]); k >= 0; k--){
+        if(k===0)
+          this.grid[i][k].n = 0;
+        else
+          this.grid[i][k] = this.grid[i][k-1];
+      }
+    }
+  }
+};
+Grid.prototype.findEmpty = function(ar){
+  for(var i in ar){
+    if(ar[i].n === 0) return parseInt(i);
+  }
+  return -1;
 };
 var View = function(grid){
   this.grid = grid;
+  this.parent = '';
 };
 View.prototype.drawGrid = function(parent){
   var view = this;
+  this.parent = parent;
   var eGrid = j(parent).get('#grid').e();
   if( eGrid !== undefined && eGrid !== null ){
     eGrid.innerHTML = '';
@@ -85,23 +113,26 @@ View.prototype.drawGrid = function(parent){
   eGrid.id = 'grid';
   eGrid.classList.add('grid');
   this.grid.forEach(function(cell,i,k){
-    var eCell = view.drawCell(cell,i,k);
+    var eCell = view.drawCell(cell,k,i);
     eGrid.appendChild(eCell);
   });
   parent.appendChild(eGrid);
 };
-View.prototype.drawCell = function(cell, i, k){
+View.prototype.drawCell = function(cell, k, i){
   var view = this;
   var eCell = document.createElement('div');
   eCell.id = 'cell_'+i+'_'+k;
   eCell.classList.add('cell');
   eCell.onclick = function(e){
+    console.log('click');
     view.manageSelect(cell,i,k);
+    view.drawGrid(view.parent);
   };
+  console.log(cell);
   if(cell.isEmpty()){
       eCell.classList.add('empty');
   } else {
-    if(eCell.selected){
+    if(cell.selected){
       eCell.classList.add('selected');
     }
     eCell.innerHTML = cell.n;
@@ -116,9 +147,10 @@ View.prototype.manageSelect = function(cell,i,k){
   else
     eCell.classList.remove('selected');
 };
-var main = function(){
-  var grid = new Grid(9);
-  grid.fillEmpty();
-  var view = new View(grid);
+var Game = function(){
+  this.grid = new Grid(9);
+  this.grid.fillEmpty();
+  var view = new View(this.grid);
   view.drawGrid(j('#container').e());
-}; main();
+};
+var main = new Game();
