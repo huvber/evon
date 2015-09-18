@@ -19,3 +19,5 @@ body, html {
     cursor: pointer; }
     .grid .cell.selected {
       border-color: #f00; }
+    .grid .cell.tried {
+      background: #0f0; }

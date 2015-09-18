@@ -1,6 +1,7 @@
 var Cell = function(number){
   this.n = number;
   this.selected = false;
+  this.tried = false;
 };
 Cell.prototype.isEmpty = function(){
   return this.n === 0;
@@ -24,6 +25,10 @@ var Grid = function(size,game){
   }
   this.selectedCells = [];
   this.selectedSum = 0;
+  this.goal = 9;
+  this.tscore = 0;
+  this.tGroup = [];
+
 };
 Grid.prototype.forEach = function(handler){
   for(var i=0; i < this.size; i++){
@@ -59,9 +64,9 @@ Grid.prototype.trySelectCell = function(cell,i,k,handler){
       }
     }
     if(near){
-      if(cell.n + this.selectedSum <= 9) {
+      if(cell.n + this.selectedSum <= this.goal) {
         this.selectCell(cell,i,k);
-        if(this.selectedSum === 9){
+        if(this.selectedSum === this.goal){
           this.removeSelectedCells(handler);
           return true;
         }
@@ -69,6 +74,40 @@ Grid.prototype.trySelectCell = function(cell,i,k,handler){
     }
   }
 };
+Grid.prototype.findNextCell = function(x,y,hOne,hFail){
+  var g = this.grid;
+  var c = g[x][y];
+  if(c.n === 0) return false;
+  var tscore = this.tscore;
+  if((tscore + c.n) == 9){
+    tscore += c.n;
+    c.tried = true;
+    this.tGroup.push({x: x,y:y, c:c});
+    return true;
+  }
+  if((tscore + c.n ) < 9){
+    tscore += c.n;
+    c.tried = true;
+    this.tGroup.push({x:x,y:y, c:c});
+    hOne(x,y,c);
+    if((x < this.n -1) &&
+      this.findNextCell(x+1,y,hOne,hFail))
+        return true;
+    else if((x > 0 )&&
+      this.findNextCell(x-1,y,hOne,hFail))
+        return true;
+    else if((y < this.n -1) &&
+      this.findNextCell(x,y+1,hOne,hFail))
+        return true;
+    else if((y > 0) &&
+      this.findNextCell(x,y-1,hOne,hFail))
+        return true;
+  }
+  tscore -= c.n;
+  this.tGroup.pop();
+  return false;
+};
+
 Grid.prototype.removeSelectedCells = function(handler){
   console.log('removing');
   var tmpScore = 0;
@@ -82,7 +121,6 @@ Grid.prototype.removeSelectedCells = function(handler){
   }
   this.selectedCells = [];
   this.selectedSum = 0;
-  console.log(this.grid);
 };
 Grid.prototype.findEmpty = function(ar){
   for(var i in ar){
@@ -95,6 +133,7 @@ var View = function(grid,game){
   this.parent = '';
   this.game = game;
 };
+
 View.prototype.drawGrid = function(parent){
   var view = this;
   if(parent !== undefined)
@@ -122,15 +161,16 @@ View.prototype.drawCell = function(cell, k, i){
   eCell.id = 'cell_'+i+'_'+k;
   eCell.classList.add('cell');
   eCell.onclick = function(e){
-    console.log('click');
     view.manageSelect(cell,i,k);
   };
-  console.log(cell);
   if(cell.isEmpty()){
       eCell.classList.add('empty');
   } else {
     if(cell.selected){
       eCell.classList.add('selected');
+    }
+    if(cell.tried){
+      eCell.classList.add('tried');
     }
     eCell.innerHTML = cell.n;
   }
@@ -140,9 +180,12 @@ View.prototype.manageSelect = function(cell,i,k){
   var view = this;
   this.grid.trySelectCell(cell,i,k,function(sc){
     view.updateScore();
-    setTimeout(function(){
-      view.drawGrid();
-    },200);
+    if(!view.grid.findNextCell(0,0,function(){
+      setTimeout(function(){view.drawGrid();},200);
+    },function(){
+      setTimeout(function(){view.drawGrid();},200);
+    }))
+      console.log('gameover');
   });
   var eCell = j('#cell_'+i+"_"+k).e();
   if(cell.selected)
